@@ -2643,6 +2643,7 @@ dependencies = [
 name = "models"
 version = "0.1.0"
 dependencies = [
+ "bigdecimal",
  "by-axum",
  "by-macros",
  "by-types",
