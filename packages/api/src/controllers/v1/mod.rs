@@ -3,14 +3,17 @@ mod agit;
 mod artist;
 mod artwork;
 mod collection;
+mod users;
 
 use agit::AgitControllerV1;
 use artist::ArtistControllerV1;
 use artwork::ArtworkControllerV1;
+use users::UserController;
 
 pub fn routes(pool: Pool<Postgres>) -> models::Result<by_axum::router::BiyardRouter> {
     Ok((by_axum::router::BiyardRouter::new())
         .nest("/agits", AgitControllerV1::route(pool.clone())?)
         .nest("/artworks", ArtworkControllerV1::route(pool.clone())?)
-        .nest("/artists", ArtistControllerV1::route(pool.clone())?))
+        .nest("/artists", ArtistControllerV1::route(pool.clone())?)
+        .nest("/users", UserController::new(pool.clone()).route()?))
 }
