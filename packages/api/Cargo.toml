@@ -8,6 +8,7 @@ edition.workspace = true
 repository.workspace = true
 license.workspace = true
 
+
 [dependencies]
 by-axum.workspace = true
 by-types.workspace = true
@@ -23,8 +24,13 @@ sqlx = { version = "0.8.3", features = [
     "bigdecimal",
 ] }
 
+
 models = { workspace = true, features = ["server"] }
 schemars = "0.8.22"
+uuid = "1.15.1"
+rest-api = "0.1.8"
+chrono = "0.4.40"
+sha3 = "0.10.8"
 [features]
 default = []
 server = []

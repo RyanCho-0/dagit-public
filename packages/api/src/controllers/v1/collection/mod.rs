@@ -18,6 +18,8 @@ use models::{
     },
 };
 use sqlx::postgres::PgRow;
+mod tests;
+
 
 #[derive(
     Debug, Clone, serde::Deserialize, serde::Serialize, schemars::JsonSchema, aide::OperationIo,
@@ -124,7 +126,7 @@ impl CollectionControllerV1 {
                 "/:id",
                 get(Self::get_collection_by_id).post(Self::act_collection_by_id),
             )
-            .route("/", post(Self::act_collection).get(Self::get_collection))
+            .route("/", get(Self::get_collection))
             .route("/create/:agit_id", post(Self::act_collection))
             .with_state(ctrl))
     }
