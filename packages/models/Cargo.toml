@@ -25,6 +25,8 @@ tracing.workspace = true
 serde_json.workspace = true
 rest-api.workspace = true
 serde_urlencoded.workspace = true
+dioxus-translate.workspace = true
+
 
 [features]
 default = []

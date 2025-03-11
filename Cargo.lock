@@ -2656,6 +2656,7 @@ dependencies = [
  "by-axum",
  "by-macros",
  "by-types",
+ "dioxus-translate",
  "reqwest",
  "rest-api",
  "schemars",
