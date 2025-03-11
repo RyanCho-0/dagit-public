@@ -18,6 +18,7 @@ use models::{
     },
 };
 use sqlx::postgres::PgRow;
+#[cfg(test)]
 mod tests;
 
 

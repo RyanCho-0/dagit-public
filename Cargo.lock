@@ -95,7 +95,7 @@ dependencies = [
  "chrono",
  "models",
  "reqwest",
- "rest-api 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rest-api",
  "schemars",
  "serde",
  "sha3",
@@ -481,7 +481,7 @@ dependencies = [
  "lambda_http 0.13.0",
  "lambda_runtime 0.13.0",
  "reqwest",
- "rest-api 0.1.8",
+ "rest-api",
  "schemars",
  "serde",
  "serde_json",
@@ -2548,7 +2548,7 @@ dependencies = [
  "dioxus-translate",
  "getrandom 0.2.15",
  "reqwest",
- "rest-api 0.1.8",
+ "rest-api",
  "serde",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -2670,7 +2670,7 @@ dependencies = [
  "by-macros",
  "by-types",
  "reqwest",
- "rest-api 0.1.8",
+ "rest-api",
  "schemars",
  "serde",
  "serde_json",
@@ -3225,22 +3225,6 @@ dependencies = [
 [[package]]
 name = "rest-api"
 version = "0.1.8"
-dependencies = [
- "base64 0.22.1",
- "candid",
- "chrono",
- "reqwest",
- "ring",
- "serde",
- "simple_asn1",
- "tracing",
-]
-
-[[package]]
-name = "rest-api"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c1b98a5731163c5ed668138775f12ece4577eabed3b70fbda2bb5ca6653f2b7"
 dependencies = [
  "base64 0.22.1",
  "candid",

@@ -1,72 +1,50 @@
-#[cfg(test)]
+use super::*;
+use crate::dagit_tests::{TestContext, setup};
+use models::v1::collection::{CollectionQuery};
 
-    use super::*;
-    use crate::dagit_tests::{TestContext, setup_test_db, setup};
-    use models::{
-        Result, error as ApiError,
-        v1::collection::{CollectionCreateRequest, CollectionQuery, CollectionUpdateRequest},
+#[tokio::test]
+async fn test_create_collection() {
+    let TestContext { endpoint, agit_id, .. } = setup().await.unwrap();
+
+    let client = Collection::get_client(&endpoint);
+    let result = client.create(agit_id, "New collection Title".to_string()).await;
+
+    assert!(result.is_ok(), "Failed to create collection: {:?}", result.err());
+}
+
+#[tokio::test]
+async fn test_query_collection() {
+    let TestContext { endpoint, agit_id, .. } = setup().await.unwrap();
+
+    let client = Collection::get_client(&endpoint);
+
+    let param = CollectionQuery {
+        bookmark: None,
+        size: 10,
     };
+    let result = client.query(agit_id, param).await;
 
-    #[tokio::test]
-    async fn test_create_collection_unauthorized() {
-        let TestContext {
-            now,
-            endpoint,
-            ..
-        } = setup().await.unwrap();
-        let pool = setup_test_db().await;
-        let controller = CollectionControllerV1::new(pool);
+    assert!(result.is_ok(), "Failed to query collection: {:?}", result.err());
+}
 
-        let result = controller
-            .create(
-                None, 
-                1, 
-                CollectionCreateRequest {
-                    title: "New Collection Title".to_string(),
-                },
-            )
-            .await;
+#[tokio::test]
+async fn test_delete_collection() {
+    let TestContext { endpoint, agit_id, .. } = setup().await.unwrap();
 
-        assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), ApiError::ServiceError::Unauthorized);
-    }
+    let client = Collection::get_client(&endpoint);
 
-    #[tokio::test]
-    async fn test_query_collection() {
-        let pool = setup_test_db().await;
-        let controller = CollectionControllerV1::new(pool);
+    let result = client.delete(agit_id, 1).await;
 
-        let param = CollectionQuery {
-            bookmark: None,
-            size: 10,
-        };
-        let result = controller.query(None, param).await;
+    assert!(result.is_ok(), "Failed to delete collection: {:?}", result.err());
+}
 
-        assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), ApiError::ServiceError::Unauthorized);
-    }
+#[tokio::test]
+async fn test_update_collection() {
+    let TestContext { endpoint, agit_id, .. } = setup().await.unwrap();
 
-    #[tokio::test]
-    async fn test_update_collection() {
-        let pool = setup_test_db().await;
-        let controller = CollectionControllerV1::new(pool);
+    let client = Collection::get_client(&endpoint);
 
-        let param = CollectionUpdateRequest {
-            title: "Updated Collection Title".to_string(),
-        };
-        let result = controller.update(None, 1, param).await;
+    let result = client.update(agit_id, 1, "Updated collection Title".to_string()).await;
 
-        assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), ApiError::ServiceError::Unauthorized);
-    }
-
-    #[tokio::test]
-    async fn test_delete_collection() {
-        let pool = setup_test_db().await;
-        let controller = CollectionControllerV1::new(pool);
-
-        let result = controller.delete(1, None).await;
-
-        assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), ApiError::ServiceError::Unauthorized);
-    }
+    assert!(result.is_ok(), "Failed to update collection: {:?}", result.err());
+}

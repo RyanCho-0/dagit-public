@@ -5,10 +5,10 @@ use by_axum::{auth::authorization_middleware, axum::middleware};
 use controllers::v1;
 
 use by_types::DatabaseConfig;
+use models::Result;
 use models::v1::{agit::Agit, artist::Artist, artwork::Artwork, collection::Collection};
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
-use models::Result;
 
 mod utils;
 
@@ -32,6 +32,7 @@ async fn migration(pool: &sqlx::Pool<sqlx::Postgres>) -> models::Result<()> {
 
     Ok(())
 }
+    
 
 #[tokio::main]
 async fn main() -> models::Result<()> {
@@ -62,22 +63,20 @@ async fn main() -> models::Result<()> {
     by_axum::serve(listener, app).await.unwrap();
 
     Ok(())
-
 }
 
 #[cfg(test)]
 pub mod dagit_tests {
     use std::{collections::HashMap, time::SystemTime};
-
-    use by_axum::aide::IntoApi;
     use by_types::Claims;
-    use rest_api::RequestHooker;
+    use rest_api::ApiService;
 
     use super::*;
 
     pub struct TestContext {
         pub pool: sqlx::Pool<sqlx::Postgres>,
-        pub app: Box<dyn IntoApi>,
+        pub app: Box<dyn ApiService>,
+        pub agit_id: i64,
         // pub user: User,
         pub user_token: String,
         pub now: i64,
@@ -104,7 +103,6 @@ pub mod dagit_tests {
             panic!("Database is not initialized. Call init() first.");
         }
     }
-
 
     pub fn setup_jwt_token(user: User) -> (Claims, String) {
         let now = SystemTime::now()
@@ -158,23 +156,8 @@ pub mod dagit_tests {
 
         let app = Box::new(app);
 
-        // Register and add hook
-        struct Hook {
-            token: String,
-        }
-
-        impl RequestHooker for Hook {
-            fn before_request(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
-                req.header("Authorization", format!("Bearer {}", self.token.clone()))
-            }
-        }
-
-        let hooker = Hook {
-            token: user_token.clone(),
-        };
-
-        rest_api::add_header("Authorization".to_string(), format!("Bearer {}", user_token.clone()));
-
+        rest_api::set_api_service(app.clone());
+        rest_api::add_authorization(&format!("Bearer {}", user_token));
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
@@ -188,6 +171,7 @@ pub mod dagit_tests {
             claims,
             now: now as i64,
             endpoint: "http://localhost:3000".to_string(),
+            agit_id: 1,
         })
     }
 }
