@@ -17,6 +17,8 @@ use models::{
     },
 };
 use sqlx::postgres::PgRow;
+#[cfg(test)]
+mod tests;
 
 #[derive(Clone, Debug)]
 pub struct AgitControllerV1 {
