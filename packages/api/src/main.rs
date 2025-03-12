@@ -5,7 +5,6 @@ use by_axum::{auth::authorization_middleware, axum::middleware};
 use controllers::v1;
 
 use by_types::DatabaseConfig;
-use models::Result;
 use models::v1::{agit::Agit, artist::Artist, artwork::Artwork, collection::Collection};
 use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
@@ -119,7 +118,7 @@ pub mod dagit_tests {
         (claims, token)
     }
 
-    pub async fn setup() -> Result<TestContext> {
+    pub async fn setup() -> models::Result<TestContext> {
         let conf = config::get();
         let pool = if let DatabaseConfig::Postgres { url, pool_size } = conf.database {
             PgPoolOptions::new()
