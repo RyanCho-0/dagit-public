@@ -25,3 +25,6 @@ build:
 	$(BUILD_ENV) cargo build --release -p $(SERVICE) --features lambda
 	mkdir -p $(WORKSPACE_ROOT)/.build/$(SERVICE)
 	cp $(CARGO_TARGET_DIR)/release/$(SERVICE) $(WORKSPACE_ROOT)/.build/$(SERVICE)/bootstrap
+
+test:
+	$(BUILD_ENV) RUSTFLAGS="-A warnings" RUST_TEST_THREADS=1 cargo test --tests $(TESTFLAGS)

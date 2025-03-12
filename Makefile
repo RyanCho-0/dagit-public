@@ -57,3 +57,6 @@ s3-deploy:
 	cp -r packages/$(SERVICE)/public .build/$(SERVICE)/public
 	aws s3 sync .build/$(SERVICE)/public s3://$(DOMAIN) $(AWS_FLAG)
 	aws cloudfront create-invalidation --distribution-id $(CDN_ID) --paths "/*" $(AWS_FLAG) > /dev/null
+
+test:
+	cd packages/$(SERVICE) && make test
