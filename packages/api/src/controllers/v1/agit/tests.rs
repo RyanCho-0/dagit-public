@@ -1,6 +1,6 @@
 use super::*;
 use crate::dagit_tests::{TestContext, setup};
-use models::v1::agit::{AgitQuery};
+use models::v1::agit::AgitQuery;
 
 #[tokio::test]
 async fn test_create_agit() {
