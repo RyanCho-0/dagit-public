@@ -10,7 +10,7 @@ use models::v1::agit;
 use models::v1::prelude::CollectionGetResponse;
 use models::{
     Result,
-    error::ServiceError as ApiError,
+    error::ServiceError,
     v1::collection::{
         Collection, CollectionAction, CollectionByIdAction, CollectionCreateRequest,
         CollectionParam, CollectionQuery, CollectionRepository, CollectionSummary,
@@ -21,14 +21,12 @@ use sqlx::postgres::PgRow;
 #[cfg(test)]
 mod tests;
 
-
 #[derive(
     Debug, Clone, serde::Deserialize, serde::Serialize, schemars::JsonSchema, aide::OperationIo,
 )]
 pub struct CollectionPathParam {
     agit_id: i64,
 }
-
 
 #[derive(
     Debug, Clone, serde::Deserialize, serde::Serialize, schemars::JsonSchema, aide::OperationIo,
@@ -57,12 +55,23 @@ impl CollectionControllerV1 {
         auth: Option<Authorization>,
         param: CollectionQuery,
     ) -> Result<QueryResponse<CollectionSummary>> {
-        if auth.is_none() {
-            return Err(ApiError::Unauthorized);
-        }
+        let user_id = match auth {
+            Some(Authorization::Bearer { claims }) => claims
+                .custom
+                .get("id")
+                .ok_or(ServiceError::Unauthorized)?
+                .parse()
+                .map_err(|e| {
+                    tracing::error!("failed to parse id {e}");
+                    ServiceError::Unauthorized
+                })?,
+            _ => {
+                return Err(ServiceError::Unauthorized);
+            }
+        };
 
         let mut total_count = 0;
-        let items: Vec<CollectionSummary> = CollectionSummary::query_builder()
+        let items: Vec<CollectionSummary> = CollectionSummary::query_builder(user_id)
             .limit(param.size())
             .page(param.page())
             .query()
@@ -81,13 +90,30 @@ impl CollectionControllerV1 {
         &self,
         auth: Option<Authorization>,
         agit_id: i64,
-        CollectionCreateRequest { title }: CollectionCreateRequest,
+        CollectionCreateRequest {
+            title,
+            description,
+            external_link,
+            banner_url,
+            logo_url,
+        }: CollectionCreateRequest,
     ) -> Result<Json<Collection>> {
         if auth.is_none() {
-            return Err(ApiError::Unauthorized);
+            return Err(ServiceError::Unauthorized);
         }
 
-        let collection = self.repo.insert(agit_id, title).await?;
+        let collection = self
+            .repo
+            .insert(
+                agit_id,
+                title,
+                description,
+                external_link,
+                banner_url,
+                logo_url,
+                false,
+            )
+            .await?;
         Ok(Json(collection))
     }
 
@@ -98,7 +124,7 @@ impl CollectionControllerV1 {
         param: CollectionUpdateRequest,
     ) -> Result<Collection> {
         if auth.is_none() {
-            return Err(ApiError::Unauthorized);
+            return Err(ServiceError::Unauthorized);
         }
 
         let collection = self.repo.update(id, param.into()).await?;
@@ -107,10 +133,13 @@ impl CollectionControllerV1 {
 
     async fn delete(&self, id: i64, auth: Option<Authorization>) -> Result<Collection> {
         if auth.is_none() {
-            return Err(ApiError::Unauthorized);
+            return Err(ServiceError::Unauthorized);
         }
 
-        self.repo.delete(id).await.map_err(|_| ApiError::NotFound)
+        self.repo
+            .delete(id)
+            .await
+            .map_err(|_| ServiceError::NotFound)
     }
 }
 
@@ -139,7 +168,7 @@ impl CollectionControllerV1 {
         Json(body): Json<CollectionAction>,
     ) -> Result<Json<Collection>> {
         match body {
-            CollectionAction::Create(param) => { 
+            CollectionAction::Create(param) => {
                 let new_collection = ctrl.create(auth, agit_id, param).await?;
                 Ok(new_collection)
             }
@@ -149,7 +178,7 @@ impl CollectionControllerV1 {
     pub async fn act_collection_by_id(
         State(ctrl): State<Self>,
         Extension(auth): Extension<Option<Authorization>>,
-        Path(CollectionIdPath{ id}): Path<CollectionIdPath>,
+        Path(CollectionIdPath { id }): Path<CollectionIdPath>,
         Json(body): Json<CollectionByIdAction>,
     ) -> Result<Json<Collection>> {
         tracing::debug!("act_collection_by_id {:?}", body);
@@ -170,14 +199,25 @@ impl CollectionControllerV1 {
     pub async fn get_collection_by_id(
         State(ctrl): State<Self>,
         Extension(auth): Extension<Option<Authorization>>,
-        Path(CollectionIdPath{ id }): Path<CollectionIdPath>,
+        Path(CollectionIdPath { id }): Path<CollectionIdPath>,
     ) -> Result<Json<Collection>> {
-        if auth.is_none() {
-            return Err(ApiError::Unauthorized);
-        }
+        let user_id = match auth {
+            Some(Authorization::Bearer { claims }) => claims
+                .custom
+                .get("id")
+                .ok_or(ServiceError::Unauthorized)?
+                .parse()
+                .map_err(|e| {
+                    tracing::error!("failed to parse id {e}");
+                    ServiceError::Unauthorized
+                })?,
+            _ => {
+                return Err(ServiceError::Unauthorized);
+            }
+        };
 
         Ok(Json(
-            Collection::query_builder()
+            Collection::query_builder(user_id)
                 .id_equals(id)
                 .query()
                 .map(Collection::from)
