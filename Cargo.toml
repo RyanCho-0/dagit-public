@@ -38,6 +38,7 @@ dioxus-translate = { path = "deps/rust-sdk/packages/dioxus-translate", features 
 dioxus-aws = { path = "deps/rust-sdk/packages/dioxus-aws" }
 rest-api = { path = "deps/rust-sdk/packages/rest-api" }
 dioxus-popup = { path = "./deps/rust-sdk/packages/dioxus-popup" }
+btracing = { path = "./deps/rust-sdk/packages/btracing" }
 
 
 sqlx = { version = "0.8.3", features = [

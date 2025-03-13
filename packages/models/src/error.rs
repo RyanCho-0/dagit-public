@@ -6,17 +6,33 @@ use by_axum::aide;
 #[cfg(feature = "server")]
 use schemars::JsonSchema;
 
-#[derive(Debug, Serialize, PartialEq, Eq, Deserialize)]
-#[repr(u64)]
+use dioxus_translate::Translate;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, PartialEq, Eq, Deserialize, Translate)]
 #[cfg_attr(feature = "server", derive(JsonSchema, aide::OperationIo))]
 pub enum ServiceError {
+    //Common
     Unknown(String),
     NotFound,
+
+    // Auth Errors
     Unauthorized,
-    BadRequest(String),
+
+    #[translate(
+        ko = "인증코드가 만료되었습니다.",
+        en = "Verification code is expired."
+    )]
+    AuthenticationCodeExpired,
+    #[translate(ko = "이미 가입한 사용자입니다.", en = "User already exists.")]
+    UserAlreadyExists,
+    #[translate(ko = "사용자를 찾을 수 없습니다.", en = "User not found.")]
+    UserNotFound,
+
     Conflict(String),
     InternalServerError(String),
     DatabaseError(String),
+    ReqwestError(String),
     ValidationError(String),
     JwtGenerationFailed(String),
     Forbidden,
@@ -27,23 +43,22 @@ pub enum ServiceError {
     AgitNotFound,
 }
 
-impl std::fmt::Display for ServiceError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+impl From<reqwest::Error> for ServiceError {
+    fn from(e: reqwest::Error) -> Self {
+        ServiceError::ReqwestError(e.to_string())
     }
 }
 
-impl std::str::FromStr for ServiceError {
-    type Err = String;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        Ok(ServiceError::Unknown(s.to_string()))
+impl From<validator::ValidationErrors> for ServiceError {
+    fn from(e: validator::ValidationErrors) -> Self {
+        ServiceError::ValidationError(e.to_string())
     }
 }
 
-impl<E: Error + 'static> From<E> for ServiceError {
-    fn from(e: E) -> Self {
-        ServiceError::Unknown(e.to_string())
+#[cfg(feature = "server")]
+impl From<sqlx::Error> for ServiceError {
+    fn from(e: sqlx::Error) -> Self {
+        ServiceError::DatabaseError(e.to_string())
     }
 }
 
@@ -52,9 +67,6 @@ impl ServiceError {
         format!("{:?}", self)
     }
 }
-
-unsafe impl Send for ServiceError {}
-unsafe impl Sync for ServiceError {}
 
 #[cfg(feature = "server")]
 impl by_axum::axum::response::IntoResponse for ServiceError {
