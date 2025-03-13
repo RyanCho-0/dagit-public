@@ -26,11 +26,18 @@ sqlx = { version = "0.8.3", features = [
 
 models = { workspace = true, features = ["server"] }
 schemars = "0.8.22"
-uuid = "1.15.1"
+
 rest-api.workspace = true
 chrono = "0.4.40"
-sha3 = "0.10.8"
+
+
 [features]
 default = []
 server = []
 lambda = ["by-axum/lambda"]
+
+[dev-dependencies]
+ic-agent = "0.39.3"
+ring = "=0.17.8"
+base64 = "0.22.1"
+uuid = { version = "1.15.1", features = ["v4"] }

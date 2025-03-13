@@ -13,7 +13,7 @@ reqwest.workspace = true
 serde.workspace = true
 validator = { version = "0.20.0", features = ["derive"] }
 by-types.workspace = true
-
+dioxus-translate.workspace = true
 
 by-axum = { workspace = true, optional = true }
 sqlx = { workspace = true, optional = true }

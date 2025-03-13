@@ -3,7 +3,7 @@ use by_macros::api_model;
 #[cfg(feature = "server")]
 use by_axum::aide;
 
-#[api_model(base = "/v1/users/:user_id/credits", table = credits)]
+#[api_model(base = "/v1/users/:user_id/credits", table = user_credits)]
 pub struct UserCredit {
     #[api_model(summary, primary_key)]
     pub id: i64,

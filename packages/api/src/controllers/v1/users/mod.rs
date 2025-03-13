@@ -36,41 +36,30 @@ impl UserController {
         State(ctrl): State<UserController>,
         Extension(auth): Extension<Option<Authorization>>,
         Json(body): Json<UserAction>,
-    ) -> Result<JsonWithHeaders<User>> {
+    ) -> Result<JsonWithHeaders<UserResponse>> {
         tracing::debug!("act_user: {:?}", auth);
         match body {
-            UserAction::Signup(req) => {
-                let user = ctrl.signup(req, auth).await?;
-                let token = ctrl.generate_token(&user)?;
-                Ok(JsonWithHeaders::new(user)
-                    .with_bearer_token(&token)
-                    .with_cookie(&token))
-            }
-            UserAction::Login(_) => {
-                let user = ctrl.login(auth).await?;
-                let token = ctrl.generate_token(&user)?;
-                Ok(JsonWithHeaders::new(user)
-                    .with_bearer_token(&token)
-                    .with_cookie(&token))
-            }
-            UserAction::UpdateProfile(req) => {
-                Ok(JsonWithHeaders::new(ctrl.update_profile(req, auth).await?))
-            }
+            UserAction::SignupOrLogin(req) => ctrl.signup_or_login(auth, req).await,
+            UserAction::UpdateProfile(req) => ctrl.update_profile(req, auth).await,
         }
     }
 
     pub async fn get(
         State(ctrl): State<UserController>,
-        Extension(auth): Extension<Option<Authorization>>,
-        Query(body): Query<UserReadAction>,
+        Extension(_auth): Extension<Option<Authorization>>,
+        Query(q): Query<UserParam>,
     ) -> Result<Json<User>> {
-        tracing::debug!("act {:?}", body);
-        match body.action {
-            Some(UserReadActionType::GetUserByAddress) => Ok(Json(ctrl.login(auth).await?)),
+        tracing::debug!("act {:?}", q);
+
+        match q {
+            UserParam::Read(param)
+                if param.action == Some(UserReadActionType::GetUserByAddress) =>
+            {
+                let user = ctrl.get_user_by_address(param).await?;
+                Ok(Json(user))
+            }
             _ => {
-                return Err(models::error::ServiceError::Unknown(
-                    "Invalid action".to_string(),
-                ));
+                todo!()
             }
         }
     }
@@ -103,54 +92,79 @@ impl UserController {
             _ => Err(models::error::ServiceError::Unauthorized),
         }
     }
-
-    pub async fn login(&self, auth: Option<Authorization>) -> Result<User> {
-        let principal = self.get_principal(auth)?;
-        let user = User::query_builder()
-            .address_equals(principal)
+    async fn get_user_by_address(
+        &self,
+        UserReadAction { address, .. }: UserReadAction,
+    ) -> Result<User> {
+        let user: User = User::query_builder()
+            .address_equals(address.unwrap_or_default())
             .query()
             .map(|r: PgRow| r.into())
             .fetch_one(&self.pool)
             .await?;
+
         Ok(user)
     }
-    pub async fn signup(
-        &self,
-        req: UserSignupRequest,
-        auth: Option<Authorization>,
-    ) -> Result<User> {
-        let principal = self.get_principal(auth)?;
 
-        let user = self
+    async fn signup_or_login(
+        &self,
+        auth: Option<Authorization>,
+        UserSignupOrLoginRequest {
+            name,
+            email,
+            profile_url,
+            provider,
+        }: UserSignupOrLoginRequest,
+    ) -> Result<JsonWithHeaders<UserResponse>> {
+        let principal = self.get_principal(auth)?;
+        let mut action = UserResponseType::SignUp;
+        let user = match self
             .repo
-            .insert(
-                req.provider,
-                principal,
-                req.email,
-                req.name,
-                req.profile_url,
-            )
-            .await?;
-        Ok(user)
+            .insert(provider, principal.clone(), email, name, profile_url)
+            .await
+        {
+            Ok(user) => user,
+            Err(_) => {
+                action = UserResponseType::Login;
+                User::query_builder()
+                    .address_equals(principal)
+                    .query()
+                    .map(|r: PgRow| r.into())
+                    .fetch_one(&self.pool)
+                    .await?
+            }
+        };
+        let jwt = self.generate_token(&user)?;
+
+        Ok(JsonWithHeaders::new(UserResponse { user, action }).with_bearer_token(&jwt))
     }
 
     pub async fn update_profile(
         &self,
         req: UserUpdateProfileRequest,
         auth: Option<Authorization>,
-    ) -> Result<User> {
-        let principal = self.get_principal(auth)?;
+    ) -> Result<JsonWithHeaders<UserResponse>> {
+        let principal = match auth {
+            Some(Authorization::Bearer { claims }) => claims.sub,
+            _ => {
+                return Err(models::error::ServiceError::Unauthorized);
+            }
+        };
+
+        let mut repo_req = UserRepositoryUpdateRequest::new().with_name(req.name);
+        if req.profile_url.is_some() {
+            repo_req = repo_req.with_profile_url(req.profile_url.unwrap());
+        }
+
         let user = self
             .repo
             .find_one(&UserReadAction::new().get_user_by_address(principal))
             .await?;
-        let user = self
-            .repo
-            .update(
-                user.id,
-                UserRepositoryUpdateRequest::new().with_name(req.name),
-            )
-            .await?;
-        Ok(user)
+
+        let user = self.repo.update(user.id, repo_req).await?;
+        Ok(JsonWithHeaders::new(UserResponse {
+            user,
+            action: UserResponseType::UpdateProfile,
+        }))
     }
 }

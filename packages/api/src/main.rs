@@ -9,7 +9,11 @@ use controllers::v1;
 
 use by_types::DatabaseConfig;
 use models::v1::{
-    agit::Agit, artist::Artist, artwork::Artwork, collection::Collection, users::User,
+    agit::Agit,
+    artist::Artist,
+    artwork::Artwork,
+    collection::Collection,
+    users::{User, UserCredit},
 };
 use sqlx::{migrate, postgres::PgPoolOptions};
 use tokio::net::TcpListener;
@@ -35,7 +39,7 @@ macro_rules! migrate {
 async fn migration(pool: &sqlx::Pool<sqlx::Postgres>) -> models::Result<()> {
     //TODO: Add Model Migration
     tracing::info!("Running migration");
-    migrate!(pool, User, Artist, Agit, Collection, Artwork,);
+    migrate!(pool, User, UserCredit, Artist, Agit, Collection, Artwork,);
     tracing::info!("Migration done");
 
     Ok(())
@@ -80,8 +84,8 @@ async fn main() -> models::Result<()> {
 pub mod dagit_tests {
     use by_types::Claims;
     use models::{error::ServiceError, v1::users::User};
-    use rest_api::{ApiService, Signature};
-    use std::{clone, collections::HashMap, time::SystemTime};
+    use rest_api::ApiService;
+    use std::{collections::HashMap, time::SystemTime};
 
     use super::*;
 

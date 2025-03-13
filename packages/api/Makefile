@@ -13,6 +13,7 @@ AWS_REGION ?= $(shell aws configure get region)
 BASE_DOMAIN ?= dagit.club
 BUCKET_EXPIRE ?= 3600
 ASSET_DIR ?= assets
+AUTH_DOMAIN ?= dev.dagit.club
 
 RUST_LOG ?= debug
 
