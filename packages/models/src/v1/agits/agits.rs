@@ -1,10 +1,9 @@
+use crate::v1::{artworks::Artwork, collections::Collection};
 #[cfg(feature = "server")]
 use by_axum::aide;
 use by_macros::api_model;
 use by_types::QueryResponse;
 use validator::Validate;
-
-use crate::v1::{artwork::Artwork, collection::Collection};
 //TODO(api): Implement "/likes", "/followers" and "/member" APIs
 //TODO(api): Implement admin api "m1/agit/:id" for managing admins.
 #[derive(Validate)]

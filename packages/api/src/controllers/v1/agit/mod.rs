@@ -11,7 +11,7 @@ use by_types::QueryResponse;
 use models::{
     Result,
     error::ServiceError,
-    v1::agit::{
+    v1::agits::{
         Agit, AgitAction, AgitByIdAction, AgitCreateRequest, AgitGetResponse, AgitParam, AgitQuery,
         AgitRepository, AgitSummary, AgitUpdateRequest,
     },

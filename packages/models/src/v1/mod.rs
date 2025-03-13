@@ -1,13 +1,15 @@
-pub mod agit;
-pub mod artist;
-pub mod artwork;
-pub mod collection;
+pub mod agit_admins;
+pub mod agits;
+pub mod artists;
+pub mod artworks;
+pub mod collections;
 pub mod users;
 
 pub mod prelude {
-    pub use super::agit::*;
-    pub use super::artist::*;
-    pub use super::artwork::*;
-    pub use super::collection::*;
+    pub use super::agit_admins::*;
+    pub use super::agits::*;
+    pub use super::artists::*;
+    pub use super::artworks::*;
+    pub use super::collections::*;
     pub use super::users::*;
 }

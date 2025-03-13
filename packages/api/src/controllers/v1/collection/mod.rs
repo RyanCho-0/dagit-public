@@ -6,12 +6,12 @@ use by_axum::axum::extract::{Path, Query, State};
 use by_axum::axum::routing::{get, post};
 use by_axum::axum::{Extension, Json};
 use by_types::QueryResponse;
-use models::v1::agit;
+use models::v1::agits;
 use models::v1::prelude::CollectionGetResponse;
 use models::{
     Result,
     error::ServiceError,
-    v1::collection::{
+    v1::collections::{
         Collection, CollectionAction, CollectionByIdAction, CollectionCreateRequest,
         CollectionParam, CollectionQuery, CollectionRepository, CollectionSummary,
         CollectionUpdateRequest,

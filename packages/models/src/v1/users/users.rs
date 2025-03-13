@@ -4,6 +4,8 @@ use by_macros::{ApiModel, api_model};
 #[cfg(feature = "server")]
 use by_axum::aide;
 
+use crate::v1::agits::Agit;
+
 #[derive(validator::Validate)]
 #[api_model(base = "/v1/users", table = users, response = [signup_or_login(UserResponse)])]
 pub struct User {
@@ -31,6 +33,10 @@ pub struct User {
 
     #[api_model(one_to_many = user_credits, foreign_key = user_id, aggregator = sum(credit))]
     pub credits: i64,
+
+    #[api_model(many_to_many = agit_admins, foreign_table_name = agits, foreign_primary_key = agit_id, foreign_reference_key = user_id)]
+    #[serde(default)]
+    pub agits: Vec<Agit>,
 }
 
 #[derive(Default, Debug, Clone, Eq, PartialEq, ApiModel)]

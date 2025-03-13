@@ -1,6 +1,6 @@
 use super::*;
 use crate::dagit_tests::{TestContext, setup};
-use models::v1::agit::AgitQuery;
+use models::v1::agits::AgitQuery;
 
 const IMAGE_URL: &str =
     "https://metadata.dev.dagit.club/images/72a11429-20c0-4d62-8cde-ff3d4d5dc0bb";

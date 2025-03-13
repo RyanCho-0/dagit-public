@@ -9,10 +9,11 @@ use controllers::v1;
 
 use by_types::DatabaseConfig;
 use models::v1::{
-    agit::Agit,
-    artist::Artist,
-    artwork::Artwork,
-    collection::Collection,
+    agit_admins::AgitAdmins,
+    agits::Agit,
+    artists::Artist,
+    artworks::Artwork,
+    collections::Collection,
     users::{User, UserCredit},
 };
 use sqlx::{migrate, postgres::PgPoolOptions};
@@ -39,7 +40,9 @@ macro_rules! migrate {
 async fn migration(pool: &sqlx::Pool<sqlx::Postgres>) -> models::Result<()> {
     //TODO: Add Model Migration
     tracing::info!("Running migration");
-    migrate!(pool, User, UserCredit, Artist, Agit, Collection, Artwork,);
+    migrate!(
+        pool, User, UserCredit, Artist, Agit, Collection, Artwork, AgitAdmins
+    );
     tracing::info!("Migration done");
 
     Ok(())
@@ -96,19 +99,23 @@ pub mod dagit_tests {
         pub id: String,
         pub claims: Claims,
         pub endpoint: String,
+        pub user: User,
         pub user_token: String,
-        pub agit_id: i64,
     }
+    const IMAGE_URL: &str =
+        "https://metadata.dev.dagit.club/images/72a11429-20c0-4d62-8cde-ff3d4d5dc0bb";
 
     pub async fn setup_test_user(id: &str, pool: &sqlx::PgPool) -> models::Result<User> {
         let user = User::get_repository(pool.clone());
+        let agit = Agit::get_repository(pool.clone());
+        let agit_admins = AgitAdmins::get_repository(pool.clone());
         let email = format!("user-{id}@test.com");
         let address = format!("test-user-address-{id}");
         let name = format!("test-user-{id}");
         let profile_url = None::<String>;
         let mut tx = pool.begin().await?;
 
-        let user = user
+        let mut user = user
             .insert_with_tx(
                 &mut *tx,
                 models::v1::users::AuthProvider::Google,
@@ -118,8 +125,29 @@ pub mod dagit_tests {
                 profile_url,
             )
             .await?
-            .ok_or(ServiceError::NotFound)?;
+            .ok_or(ServiceError::Unknown("Create Test User Failed".to_string()))?;
 
+        let agit = agit
+            .insert_with_tx(
+                &mut *tx,
+                format!("test-agit-{id}"),
+                format!("description"),
+                None,
+                IMAGE_URL.to_string(),
+                IMAGE_URL.to_string(),
+                false,
+            )
+            .await?
+            .ok_or(ServiceError::Unknown("Create Agit Failed".to_string()))?;
+        let _ = agit_admins.insert(agit.id, user.id);
+
+        let user = User::query_builder()
+            .id_equals(user.id)
+            .query()
+            .map(User::from)
+            .fetch_optional(&mut *tx)
+            .await?
+            .ok_or(ApiError::DuplicateUser)?;
         tx.commit().await?;
 
         Ok(user)
@@ -200,8 +228,8 @@ pub mod dagit_tests {
         Ok(TestContext {
             pool,
             app,
+            user,
             id: id.to_string(),
-            agit_id: 1,
             user_token,
             claims,
             now: now as i64,
