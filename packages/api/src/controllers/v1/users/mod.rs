@@ -1,12 +1,12 @@
-#![allow(unused)]
+#[cfg(test)]
+mod tests;
 
 use std::collections::HashMap;
 
 use by_axum::auth::{Authorization, generate_jwt};
-use by_axum::axum::extract::{Path, Query, State};
+use by_axum::axum::extract::{Query, State};
 use by_axum::axum::routing::post;
 use by_axum::axum::{Extension, Json};
-use by_axum::{aide, auth};
 use by_types::{Claims, JsonWithHeaders};
 use models::Result;
 use models::error::ServiceError;

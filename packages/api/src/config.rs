@@ -4,6 +4,7 @@ use by_types::config::*;
 pub struct Config {
     pub env: &'static str,
     pub database: DatabaseConfig,
+    pub auth: AuthConfig,
 }
 
 impl Default for Config {
@@ -11,6 +12,7 @@ impl Default for Config {
         Config {
             env: option_env!("ENV").expect("You must set ENV"),
             database: DatabaseConfig::default(),
+            auth: AuthConfig::default(),
         }
     }
 }

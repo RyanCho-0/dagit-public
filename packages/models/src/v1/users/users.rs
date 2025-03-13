@@ -9,12 +9,12 @@ use by_axum::aide;
 pub struct User {
     #[api_model(primary_key)]
     pub id: i64,
-    #[api_model(type = TIMESTAMP, auto = insert)]
+    #[api_model(auto = insert)]
     pub created_at: i64,
-    #[api_model(type = TIMESTAMP, auto = [insert, update])]
+    #[api_model(auto = [insert, update])]
     pub updated_at: i64,
 
-    #[api_model(unique, action = signup, type = INTEGER)]
+    #[api_model(action = signup, type = INTEGER)]
     pub provider: AuthProvider,
     #[api_model(unique, read_action = get_user_by_address)]
     pub address: String,
@@ -38,5 +38,4 @@ pub struct User {
 pub enum AuthProvider {
     #[default]
     Google = 1,
-    Icp = 2,
 }
