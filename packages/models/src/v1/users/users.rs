@@ -5,7 +5,7 @@ use by_macros::{ApiModel, api_model};
 use by_axum::aide;
 
 #[derive(validator::Validate)]
-#[api_model(base = "/v1/users", table = users)]
+#[api_model(base = "/v1/users", table = users, action = [login])]
 pub struct User {
     #[api_model(primary_key)]
     pub id: i64,
@@ -25,8 +25,6 @@ pub struct User {
     #[api_model(action = [signup, update_profile])]
     pub name: String,
 
-    // #[api_model(action = signup)]
-    // pub password: String,
     #[api_model(action = [signup, update_profile], nullable)]
     #[validate(url)]
     pub profile_url: Option<String>,
@@ -35,42 +33,10 @@ pub struct User {
     pub credits: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[cfg_attr(feature = "server", derive(schemars::JsonSchema, aide::OperationIo))]
-pub struct UserResponse {
-    #[serde(flatten)]
-    pub user: User,
-    pub action: UserResponseType,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, ApiModel, Default)]
-#[cfg_attr(feature = "server", derive(schemars::JsonSchema, aide::OperationIo))]
-pub enum UserResponseType {
-    #[default]
-    SignUp = 1,
-    Login = 2,
-}
-
 #[derive(Default, Debug, Clone, Eq, PartialEq, ApiModel)]
 #[cfg_attr(feature = "server", derive(schemars::JsonSchema, aide::OperationIo))]
 pub enum AuthProvider {
     #[default]
     Google = 1,
-    Kakao = 2,
-    Icp = 3,
-}
-
-#[api_model(base = "/v1/users/:user-id/credits", table = credits)]
-pub struct UserCredit {
-    #[api_model(summary, primary_key)]
-    pub id: i64,
-    #[api_model(summary, auto = insert)]
-    pub created_at: i64,
-    #[api_model(many_to_one = users)]
-    pub user_id: i64,
-
-    #[api_model(summary, action = add)]
-    pub description: String,
-    #[api_model(summary, action = add)]
-    pub credit: i64,
+    Icp = 2,
 }

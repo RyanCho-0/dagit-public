@@ -1,5 +1,5 @@
-use std::error::Error;
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 
 #[cfg(feature = "server")]
 use by_axum::aide;
@@ -18,6 +18,7 @@ pub enum ServiceError {
     InternalServerError(String),
     DatabaseError(String),
     ValidationError(String),
+    JwtGenerationFailed(String),
     Forbidden,
     CannotCreateAgit,
     CannotUpdateAgit,
@@ -59,20 +60,26 @@ unsafe impl Sync for ServiceError {}
 impl by_axum::axum::response::IntoResponse for ServiceError {
     fn into_response(self) -> by_axum::axum::response::Response {
         let status_code = match self {
-            ServiceError::NotFound | ServiceError::AgitNotFound => by_axum::axum::http::StatusCode::NOT_FOUND,
+            ServiceError::NotFound | ServiceError::AgitNotFound => {
+                by_axum::axum::http::StatusCode::NOT_FOUND
+            }
             ServiceError::Unauthorized => by_axum::axum::http::StatusCode::UNAUTHORIZED,
             ServiceError::Forbidden => by_axum::axum::http::StatusCode::FORBIDDEN,
-            ServiceError::BadRequest(_) | ServiceError::ValidationError(_) => by_axum::axum::http::StatusCode::BAD_REQUEST,
-            ServiceError::Conflict(_) | ServiceError::AgitAlreadyExists => by_axum::axum::http::StatusCode::CONFLICT,
-            ServiceError::CannotCreateAgit | ServiceError::CannotUpdateAgit | ServiceError::CannotDeleteAgit => by_axum::axum::http::StatusCode::BAD_REQUEST,
-            ServiceError::InternalServerError(_) | ServiceError::DatabaseError(_) => by_axum::axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            ServiceError::BadRequest(_) | ServiceError::ValidationError(_) => {
+                by_axum::axum::http::StatusCode::BAD_REQUEST
+            }
+            ServiceError::Conflict(_) | ServiceError::AgitAlreadyExists => {
+                by_axum::axum::http::StatusCode::CONFLICT
+            }
+            ServiceError::CannotCreateAgit
+            | ServiceError::CannotUpdateAgit
+            | ServiceError::CannotDeleteAgit => by_axum::axum::http::StatusCode::BAD_REQUEST,
+            ServiceError::InternalServerError(_) | ServiceError::DatabaseError(_) => {
+                by_axum::axum::http::StatusCode::INTERNAL_SERVER_ERROR
+            }
             _ => by_axum::axum::http::StatusCode::BAD_REQUEST,
         };
 
-        (
-            status_code,
-            by_axum::axum::Json(self),
-        )
-            .into_response()
+        (status_code, by_axum::axum::Json(self)).into_response()
     }
 }

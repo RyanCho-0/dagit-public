@@ -1,13 +1,17 @@
 #![allow(unused)]
 
-use by_axum::auth::Authorization;
+use std::collections::HashMap;
+
+use by_axum::auth::{Authorization, generate_jwt};
 use by_axum::axum::extract::{Path, Query, State};
 use by_axum::axum::routing::post;
 use by_axum::axum::{Extension, Json};
 use by_axum::{aide, auth};
-use by_types::JsonWithHeaders;
+use by_types::{Claims, JsonWithHeaders};
 use models::Result;
+use models::error::ServiceError;
 use models::v1::prelude::*;
+use sqlx::postgres::PgRow;
 
 #[derive(Clone, Debug)]
 pub struct UserController {
@@ -32,11 +36,26 @@ impl UserController {
         State(ctrl): State<UserController>,
         Extension(auth): Extension<Option<Authorization>>,
         Json(body): Json<UserAction>,
-    ) -> Result<Json<User>> {
-        tracing::debug!("act_user: {:?}", body);
+    ) -> Result<JsonWithHeaders<User>> {
+        tracing::debug!("act_user: {:?}", auth);
         match body {
-            UserAction::Signup(req) => Ok(Json(ctrl.signup(req, auth).await?)),
-            UserAction::UpdateProfile(req) => Ok(Json(ctrl.update_profile(req, auth).await?)),
+            UserAction::Signup(req) => {
+                let user = ctrl.signup(req, auth).await?;
+                let token = ctrl.generate_token(&user)?;
+                Ok(JsonWithHeaders::new(user)
+                    .with_bearer_token(&token)
+                    .with_cookie(&token))
+            }
+            UserAction::Login(_) => {
+                let user = ctrl.login(auth).await?;
+                let token = ctrl.generate_token(&user)?;
+                Ok(JsonWithHeaders::new(user)
+                    .with_bearer_token(&token)
+                    .with_cookie(&token))
+            }
+            UserAction::UpdateProfile(req) => {
+                Ok(JsonWithHeaders::new(ctrl.update_profile(req, auth).await?))
+            }
         }
     }
 
@@ -58,6 +77,21 @@ impl UserController {
 }
 
 impl UserController {
+    fn generate_token(&self, user: &User) -> Result<String> {
+        let mut claims = Claims {
+            sub: user.address.clone(),
+            exp: 0,
+            role: by_types::Role::User,
+            custom: HashMap::from([
+                ("email".to_string(), user.email.to_string()),
+                ("id".to_string(), user.id.to_string()),
+            ]),
+        };
+        Ok(generate_jwt(&mut claims).map_err(|e| {
+            tracing::error!("jwt generation error: {:?}", e);
+            ServiceError::JwtGenerationFailed(e.to_string())
+        })?)
+    }
     fn get_principal(&self, auth: Option<Authorization>) -> Result<String> {
         match auth {
             Some(Authorization::UserSig(sig)) => {
@@ -72,9 +106,11 @@ impl UserController {
 
     pub async fn login(&self, auth: Option<Authorization>) -> Result<User> {
         let principal = self.get_principal(auth)?;
-        let user = self
-            .repo
-            .find_one(&UserReadAction::new().get_user_by_address(principal))
+        let user = User::query_builder()
+            .address_equals(principal)
+            .query()
+            .map(|r: PgRow| r.into())
+            .fetch_one(&self.pool)
             .await?;
         Ok(user)
     }
@@ -84,6 +120,7 @@ impl UserController {
         auth: Option<Authorization>,
     ) -> Result<User> {
         let principal = self.get_principal(auth)?;
+
         let user = self
             .repo
             .insert(
