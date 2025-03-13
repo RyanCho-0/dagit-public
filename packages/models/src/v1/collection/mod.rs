@@ -30,7 +30,7 @@ pub struct Collection {
     #[api_model(summary, action = create, action_by_id = update)]
     #[validate(url)]
     pub logo_url: String,
-    #[api_model(summary, action = create, action_by_id = update)]
+    #[api_model(summary, action_by_id = update)]
     pub authorized: bool,
 
     #[api_model(summary, one_to_many = artworks, foreign_key = collection_id)]

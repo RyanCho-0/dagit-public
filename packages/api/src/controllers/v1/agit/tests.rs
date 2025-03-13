@@ -2,12 +2,23 @@ use super::*;
 use crate::dagit_tests::{TestContext, setup};
 use models::v1::agit::AgitQuery;
 
+const IMAGE_URL: &str =
+    "https://metadata.dev.dagit.club/images/72a11429-20c0-4d62-8cde-ff3d4d5dc0bb";
+
 #[tokio::test]
 async fn test_create_agit() {
     let TestContext { endpoint, .. } = setup().await.unwrap();
 
     let client = Agit::get_client(&endpoint);
-    let result = client.create("New Agit Title".to_string()).await;
+    let result = client
+        .create(
+            "TEST_AGIT".to_string(),
+            "TEST_AGIT_DESCRIPTION".to_string(),
+            None,
+            IMAGE_URL.to_string(),
+            IMAGE_URL.to_string(),
+        )
+        .await;
 
     assert!(result.is_ok(), "Failed to create agit: {:?}", result.err());
 }
@@ -43,8 +54,30 @@ async fn test_update_agit() {
     let TestContext { endpoint, .. } = setup().await.unwrap();
 
     let client = Agit::get_client(&endpoint);
-
-    let result = client.update(1, "Updated Agit Title".to_string()).await;
-
+    let result = client
+        .create(
+            "UPDATE_TEST_AGIT".to_string(),
+            "DESCRIPTION".to_string(),
+            None,
+            IMAGE_URL.to_string(),
+            IMAGE_URL.to_string(),
+        )
+        .await;
+    assert!(result.is_ok(), "Failed to create agit: {:?}", result.err());
+    let agit = result.unwrap();
+    let result = client
+        .update(
+            agit.id,
+            agit.title,
+            agit.description,
+            None,
+            agit.banner_url,
+            agit.logo_url,
+            true,
+        )
+        .await;
     assert!(result.is_ok(), "Failed to update agit: {:?}", result.err());
+    let result = result.unwrap();
+    assert_eq!(result.title, "UPDATE_TEST_AGIT");
+    assert_eq!(result.authorized, true);
 }

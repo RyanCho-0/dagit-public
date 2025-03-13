@@ -10,7 +10,7 @@ use by_axum::{
 use by_types::QueryResponse;
 use models::{
     Result,
-    error::ServiceError as ApiError,
+    error::ServiceError,
     v1::agit::{
         Agit, AgitAction, AgitByIdAction, AgitCreateRequest, AgitGetResponse, AgitParam, AgitQuery,
         AgitRepository, AgitSummary, AgitUpdateRequest,
@@ -20,75 +20,18 @@ use sqlx::postgres::PgRow;
 #[cfg(test)]
 mod tests;
 
+#[derive(
+    Debug, Clone, serde::Deserialize, serde::Serialize, schemars::JsonSchema, aide::OperationIo,
+)]
+#[serde(rename_all = "kebab-case")]
+pub struct AgitPath {
+    pub id: i64,
+}
+
 #[derive(Clone, Debug)]
 pub struct AgitControllerV1 {
     repo: AgitRepository,
     pool: sqlx::Pool<sqlx::Postgres>,
-}
-
-impl AgitControllerV1 {
-    async fn query(
-        &self,
-        auth: Option<Authorization>,
-        param: AgitQuery,
-    ) -> Result<QueryResponse<AgitSummary>> {
-        tracing::debug!("{param}");
-        if auth.is_none() {
-            return Err(ApiError::Unauthorized);
-        }
-
-        let mut total_count = 0;
-        let items: Vec<AgitSummary> = AgitSummary::query_builder()
-            .limit(param.size())
-            .page(param.page())
-            .query()
-            .map(|row: PgRow| {
-                use sqlx::Row;
-                total_count = row.try_get("total_count").unwrap_or_default();
-                row.into()
-            })
-            .fetch_all(&self.pool)
-            .await?;
-
-        Ok(QueryResponse { total_count, items })
-    }
-
-    async fn create(
-        &self,
-        auth: Option<Authorization>,
-        AgitCreateRequest { title }: AgitCreateRequest,
-    ) -> Result<Agit> {
-        if auth.is_none() {
-            return Err(ApiError::Unauthorized);
-        }
-
-        let agit = self.repo.insert(title).await?;
-
-        Ok(agit)
-    }
-
-    async fn update(
-        &self,
-        id: i64,
-        auth: Option<Authorization>,
-        param: AgitUpdateRequest,
-    ) -> Result<Agit> {
-        if auth.is_none() {
-            return Err(ApiError::Unauthorized);
-        }
-
-        let agit = self.repo.update(id, param.into()).await?;
-        Ok(agit)
-    }
-
-    async fn delete(&self, id: i64, auth: Option<Authorization>) -> Result<Agit> {
-        if auth.is_none() {
-            return Err(ApiError::Unauthorized);
-        }
-
-        let agit = self.repo.delete(id).await?;
-        Ok(agit)
-    }
 }
 
 impl AgitControllerV1 {
@@ -147,12 +90,23 @@ impl AgitControllerV1 {
     ) -> Result<Json<Agit>> {
         tracing::debug!("get_agit {}", id);
 
-        if auth.is_none() {
-            return Err(ApiError::Unauthorized);
-        }
+        let user_id = match auth {
+            Some(Authorization::Bearer { claims }) => claims
+                .custom
+                .get("id")
+                .ok_or(ServiceError::Unauthorized)?
+                .parse()
+                .map_err(|e| {
+                    tracing::error!("failed to parse id {e}");
+                    ServiceError::Unauthorized
+                })?,
+            _ => {
+                return Err(ServiceError::Unauthorized);
+            }
+        };
 
         Ok(Json(
-            Agit::query_builder()
+            Agit::query_builder(user_id)
                 .id_equals(id)
                 .query()
                 .map(Agit::from)
@@ -176,10 +130,94 @@ impl AgitControllerV1 {
     }
 }
 
-#[derive(
-    Debug, Clone, serde::Deserialize, serde::Serialize, schemars::JsonSchema, aide::OperationIo,
-)]
-#[serde(rename_all = "kebab-case")]
-pub struct AgitPath {
-    pub id: i64,
+impl AgitControllerV1 {
+    async fn query(
+        &self,
+        auth: Option<Authorization>,
+        param: AgitQuery,
+    ) -> Result<QueryResponse<AgitSummary>> {
+        tracing::debug!("{param}");
+        let user_id = match auth {
+            Some(Authorization::Bearer { claims }) => claims
+                .custom
+                .get("id")
+                .ok_or(ServiceError::Unauthorized)?
+                .parse()
+                .map_err(|e| {
+                    tracing::error!("failed to parse id {e}");
+                    ServiceError::Unauthorized
+                })?,
+            _ => {
+                return Err(ServiceError::Unauthorized);
+            }
+        };
+
+        let mut total_count = 0;
+        let items: Vec<AgitSummary> = AgitSummary::query_builder(user_id)
+            .limit(param.size())
+            .page(param.page())
+            .query()
+            .map(|row: PgRow| {
+                use sqlx::Row;
+                total_count = row.try_get("total_count").unwrap_or_default();
+                row.into()
+            })
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(QueryResponse { total_count, items })
+    }
+
+    async fn create(
+        &self,
+        auth: Option<Authorization>,
+        AgitCreateRequest {
+            title,
+            description,
+            external_link,
+            banner_url,
+            logo_url,
+        }: AgitCreateRequest,
+    ) -> Result<Agit> {
+        if auth.is_none() {
+            return Err(ServiceError::Unauthorized);
+        }
+
+        let agit = self
+            .repo
+            .insert(
+                title,
+                description,
+                external_link,
+                banner_url,
+                logo_url,
+                false,
+            )
+            .await?;
+
+        Ok(agit)
+    }
+
+    async fn update(
+        &self,
+        id: i64,
+        auth: Option<Authorization>,
+        param: AgitUpdateRequest,
+    ) -> Result<Agit> {
+        if auth.is_none() {
+            return Err(ServiceError::Unauthorized);
+        }
+
+        let agit = self.repo.update(id, param.into()).await?;
+        Ok(agit)
+    }
+
+    async fn delete(&self, id: i64, auth: Option<Authorization>) -> Result<Agit> {
+        if auth.is_none() {
+            return Err(ServiceError::Unauthorized);
+        }
+
+        let agit = self.repo.delete(id).await?;
+        Ok(agit)
+    }
 }

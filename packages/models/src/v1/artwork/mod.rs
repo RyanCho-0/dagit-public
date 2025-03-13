@@ -41,6 +41,6 @@ pub struct Artwork {
     #[api_model(summary, many_to_many = artwork_user_likes, table_name = users, foreign_primary_key = user_id, foreign_reference_key = artwork_id, aggregator = exist)]
     pub liked: bool,
 
-    #[api_model(summary, one_to_many = artwork_prices, foreign_key = artwork_id, aggregator = Max(created_at))]
+    #[api_model(summary, one_to_many = artwork_prices, foreign_key = artwork_id, aggregator = max(created_at))]
     pub last_price: i64,
 }

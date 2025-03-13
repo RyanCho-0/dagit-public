@@ -29,7 +29,8 @@ pub struct Agit {
     #[api_model(summary, action = create, action_by_id = update)]
     #[validate(url)]
     pub logo_url: String,
-    #[api_model(summary, action = create, action_by_id = update)]
+    #[api_model(summary, action_by_id = update)]
+    #[serde(default)]
     pub authorized: bool,
 
     #[api_model(summary, one_to_many = collections, foreign_key = agit_id)]
